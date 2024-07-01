@@ -1,12 +1,10 @@
 'use strict';
-
 import React, {memo} from 'react';
 import {StyleSheet, SectionList, DefaultSectionT} from 'react-native';
-import {PanGestureHandler} from 'react-native-gesture-handler';
+import {GestureDetector, Gesture} from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
   SharedValue,
-  useAnimatedGestureHandler,
   useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated';
@@ -72,6 +70,8 @@ const SectionListScrollIndicator: React.FC<SectionListScrollIndicatorProps> = ({
   sectionTitles,
   sectionListRef,
 }) => {
+  const y = useSharedValue(0);
+
   const onScroll = (currentYCoordinate: number) => {
     sectionListRef?.current &&
       throttle(
@@ -92,30 +92,33 @@ const SectionListScrollIndicator: React.FC<SectionListScrollIndicatorProps> = ({
       )();
   };
 
-  const y = useSharedValue(0);
-  const eventHandler = useAnimatedGestureHandler({
-    onStart: () => {},
-    onActive: (event, _) => {
+  const pan = Gesture.Pan()
+    .onUpdate(event => {
       y.value = event.y;
       runOnJS(onScroll)(event.y);
-    },
-    onEnd: () => {
+    })
+    .onEnd(() => {
       y.value = 0;
-    },
-  });
+    })
+    .runOnJS(true);
 
   const renderSectionTitles = sectionTitles.map(
     (sectionTitle: string, index: number) => (
-      <SectionTitle sectionTitle={sectionTitle} index={index} y={y} />
+      <SectionTitle
+        sectionTitle={sectionTitle}
+        index={index}
+        y={y}
+        key={`${sectionTitle}_${index}`}
+      />
     ),
   );
 
   return (
-    <PanGestureHandler onGestureEvent={eventHandler}>
+    <GestureDetector gesture={pan}>
       <Animated.View style={styles.container}>
         {renderSectionTitles}
       </Animated.View>
-    </PanGestureHandler>
+    </GestureDetector>
   );
 };
 
