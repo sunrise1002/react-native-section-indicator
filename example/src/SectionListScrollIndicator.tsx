@@ -1,67 +1,110 @@
-'use strict';
 import React, {memo} from 'react';
-import {StyleSheet, SectionList, DefaultSectionT} from 'react-native';
+import {
+  StyleSheet,
+  SectionList,
+  DefaultSectionT,
+  Dimensions,
+  View,
+  TextStyle,
+  ViewStyle,
+} from 'react-native';
 import {GestureDetector, Gesture} from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
   SharedValue,
-  useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated';
 import {throttle} from './helper';
+import useAppropriateStyle from './useAppropriateStyle';
+
+const THROTTLE_DURATION = 200;
 
 interface SectionListScrollIndicatorProps {
   sectionTitles: string[];
   sectionListRef: React.RefObject<SectionList<any, DefaultSectionT>>;
+  topContainer?: number;
+  paddingVerticalContainer?: number;
+  sectionTitleHeight?: number;
+  indicatorContainerStyle?: ViewStyle;
+  sectionTitleInactiveStyle?: TextStyle;
+  sectionTitleHighlightStyle?: TextStyle;
+  sectionInactiveStyle?: ViewStyle;
+  sectionHighlightStyle?: ViewStyle;
+  throttleDuration?: number;
+  throttleFunc?: any;
 }
 
 interface SectionTitleProps {
   sectionTitle: string;
   index: number;
   y: SharedValue<number>;
+  sectionTitleHeight?: number;
+  sectionTitleInactiveStyle?: TextStyle;
+  sectionTitleHighlightStyle?: TextStyle;
+  sectionInactiveStyle?: ViewStyle;
+  sectionHighlightStyle?: ViewStyle;
 }
 
 const SectionTitle: React.FC<SectionTitleProps> = memo(
-  ({sectionTitle, y, index}) => {
-    const sectionTitleAnimatedStyle = useAnimatedStyle(() => {
-      const startYCoordinate =
-        0 + PADDING_VERTICAL + index * SECTION_TITLE_HEIGHT;
-      const isHighlight =
-        startYCoordinate <= y.value &&
-        y.value <= startYCoordinate + SECTION_TITLE_HEIGHT;
-
-      return {
-        fontSize: isHighlight ? 20 : 12,
-      };
+  ({
+    sectionTitle,
+    y,
+    index,
+    sectionTitleHeight,
+    sectionTitleInactiveStyle = {},
+    sectionTitleHighlightStyle = {},
+    sectionInactiveStyle = {},
+    sectionHighlightStyle = {},
+  }) => {
+    const sectionTitleAnimatedStyle = useAppropriateStyle<TextStyle>({
+      paddingVerticalIndicator: PADDING_VERTICAL,
+      sectionTitleHeight: SECTION_TITLE_HEIGHT,
+      index,
+      yCoordinate: y,
+      inactiveStyle: {
+        ...styles.sectionTitleInactiveStyle,
+        ...sectionTitleInactiveStyle,
+      },
+      highlightStyle: {
+        ...styles.sectionTitleHighlightStyle,
+        ...sectionTitleHighlightStyle,
+      },
     });
 
-    const sectionAnimatedStyle = useAnimatedStyle(() => {
-      const startYCoordinate =
-        0 + PADDING_VERTICAL + index * SECTION_TITLE_HEIGHT;
-      const isHighlight =
-        startYCoordinate <= y.value &&
-        y.value <= startYCoordinate + SECTION_TITLE_HEIGHT;
+    const sectionAnimatedStyle = useAppropriateStyle<ViewStyle>({
+      paddingVerticalIndicator: PADDING_VERTICAL,
+      sectionTitleHeight: SECTION_TITLE_HEIGHT,
+      index,
+      yCoordinate: y,
+      inactiveStyle: {...styles.sectionInactiveStyle, ...sectionInactiveStyle},
+      highlightStyle: {
+        ...styles.sectionHighlightStyle,
+        ...sectionHighlightStyle,
+      },
+    });
 
-      return {
-        bottom: isHighlight ? 70 : 0,
-        backgroundColor: isHighlight ? '#CDE5FC' : '#F0F2F3',
-        width: isHighlight ? 50 : '100%',
-        height: isHighlight ? 50 : 20,
-        borderRadius: isHighlight ? 25 : 0,
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: '#ED6262',
-        shadowOffset: {width: 1, height: 1},
-        shadowOpacity: isHighlight ? 0.5 : 0,
-      };
+    const emptyViewStyle = useAppropriateStyle<ViewStyle>({
+      paddingVerticalIndicator: PADDING_VERTICAL,
+      sectionTitleHeight: SECTION_TITLE_HEIGHT,
+      index,
+      yCoordinate: y,
+      inactiveStyle: styles.emptyViewInactiveStyle,
+      highlightStyle: {
+        ...styles.emptyViewHighlightStyle,
+        height: sectionTitleHeight,
+      },
     });
 
     return (
-      <Animated.View style={[sectionAnimatedStyle]}>
-        <Animated.Text style={[styles.section, sectionTitleAnimatedStyle]}>
-          {sectionTitle}
-        </Animated.Text>
-      </Animated.View>
+      <View style={styles.sectionTitleWrapper}>
+        <Animated.View style={sectionAnimatedStyle}>
+          <Animated.Text style={sectionTitleAnimatedStyle}>
+            {sectionTitle}
+          </Animated.Text>
+        </Animated.View>
+
+        <Animated.View style={emptyViewStyle} />
+      </View>
     );
   },
 );
@@ -69,27 +112,52 @@ const SectionTitle: React.FC<SectionTitleProps> = memo(
 const SectionListScrollIndicator: React.FC<SectionListScrollIndicatorProps> = ({
   sectionTitles,
   sectionListRef,
+  topContainer,
+  paddingVerticalContainer,
+  sectionTitleHeight,
+  indicatorContainerStyle = {},
+  sectionTitleInactiveStyle = {},
+  sectionTitleHighlightStyle = {},
+  sectionInactiveStyle = {},
+  sectionHighlightStyle = {},
+  throttleDuration,
+  throttleFunc,
 }) => {
   const y = useSharedValue(0);
 
+  const finalPaddingTopIndicator = (paddingVerticalContainer ??
+    indicatorContainerStyle?.paddingVertical ??
+    indicatorContainerStyle?.paddingTop ??
+    PADDING_VERTICAL) as number;
+  const finalSectionTitleHeight = (sectionTitleHeight ??
+    sectionInactiveStyle?.height ??
+    SECTION_TITLE_HEIGHT) as number;
+  const topContainerPosition =
+    topContainer ??
+    Math.max(
+      height -
+        finalPaddingTopIndicator -
+        (sectionTitles?.length || 0) * finalSectionTitleHeight,
+      0,
+    ) / 2;
+
   const onScroll = (currentYCoordinate: number) => {
+    const finalThrottleFunc = throttleFunc || throttle;
     sectionListRef?.current &&
-      throttle(
-        () =>
-          sectionListRef?.current?.scrollToLocation({
-            itemIndex: 0,
-            sectionIndex: Math.min(
-              parseInt(
-                `${
-                  (currentYCoordinate - PADDING_VERTICAL) / SECTION_TITLE_HEIGHT
-                }`,
-                10,
-              ),
-              sectionTitles.length - 1,
+      finalThrottleFunc(() => {
+        sectionListRef?.current?.scrollToLocation({
+          itemIndex: 0,
+          sectionIndex: Math.min(
+            parseInt(
+              `${
+                (currentYCoordinate - PADDING_VERTICAL) / SECTION_TITLE_HEIGHT
+              }`,
+              10,
             ),
-          }),
-        1000,
-      )();
+            sectionTitles.length - 1,
+          ),
+        });
+      }, throttleDuration ?? THROTTLE_DURATION)();
   };
 
   const pan = Gesture.Pan()
@@ -109,13 +177,23 @@ const SectionListScrollIndicator: React.FC<SectionListScrollIndicatorProps> = ({
         index={index}
         y={y}
         key={`${sectionTitle}_${index}`}
+        sectionTitleHeight={finalSectionTitleHeight}
+        sectionTitleInactiveStyle={sectionTitleInactiveStyle}
+        sectionTitleHighlightStyle={sectionTitleHighlightStyle}
+        sectionInactiveStyle={sectionInactiveStyle}
+        sectionHighlightStyle={sectionHighlightStyle}
       />
     ),
   );
 
   return (
     <GestureDetector gesture={pan}>
-      <Animated.View style={styles.container}>
+      <Animated.View
+        style={[
+          styles.container,
+          indicatorContainerStyle,
+          {top: topContainerPosition},
+        ]}>
         {renderSectionTitles}
       </Animated.View>
     </GestureDetector>
@@ -124,21 +202,59 @@ const SectionListScrollIndicator: React.FC<SectionListScrollIndicatorProps> = ({
 
 const PADDING_VERTICAL = 5;
 const SECTION_TITLE_HEIGHT = 20;
+const {height} = Dimensions.get('window');
 const styles = StyleSheet.create({
   container: {
     width: 25,
     borderRadius: 12,
-    backgroundColor: '#F0F2F3',
+    backgroundColor: '#D5D7F2',
     alignItems: 'center',
     paddingVertical: PADDING_VERTICAL,
     position: 'absolute',
-    top: 100,
     right: 20,
-    zIndex: 5,
+    zIndex: 1,
   },
-  section: {
+  sectionTitleWrapper: {
+    alignItems: 'center',
+  },
+  sectionTitleInactiveStyle: {
+    fontSize: 12,
+    color: '#3D46F2',
+    fontWeight: '500',
+  },
+  sectionTitleHighlightStyle: {
+    fontSize: 20,
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  sectionInactiveStyle: {
+    bottom: 0,
+    backgroundColor: 'transparent',
+    width: '100%',
     height: SECTION_TITLE_HEIGHT,
-    color: '#506CEE',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  sectionHighlightStyle: {
+    bottom: 70,
+    backgroundColor: '#636AF2',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#404040',
+    shadowOffset: {width: 1, height: 1},
+    elevation: 1,
+    shadowOpacity: 0.5,
+    position: 'absolute',
+  },
+  emptyViewInactiveStyle: {
+    height: 0,
+  },
+  emptyViewHighlightStyle: {
+    height: SECTION_TITLE_HEIGHT,
   },
 });
 
