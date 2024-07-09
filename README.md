@@ -71,6 +71,22 @@ export default App
 
 ```
 
+## Available props for SectionListScrollIndicator
+| Name                             | Type                                              | Description                                       |
+| -------------------------------- | -------------------- | ------------------------------------------------------------------------------ |
+| `sectionTitles`                  | `string[]`                                        | (REQUIRED)Array of section titles                 |
+| `sectionListRef`                 | `RefObject<SectionList<any, DefaultSectionT>>`    | (REQUIRED)Section list ref                        |
+| `topContainer`                   | `number`                                          | Top layout prop of indicator container            |
+| `paddingVerticalContainer`       | `number`                                          | Padding vertical indicator container              |
+| `sectionTitleHeight`             | `number`                                          | Section title height                              |
+| `indicatorContainerStyle`        | `ViewStyle`                                       | Custom style for indicator container              |
+| `sectionTitleInactiveStyle`      | `TextStyle`                                       | Custom style inactive for section title           |
+| `sectionTitleHighlightStyle`     | `TextStyle`                                       | Custom style highlight for section title          |
+| `sectionInactiveStyle`           | `ViewStyle`                                       | Custom style inactive for section title wrapper   |
+| `sectionHighlightStyle`          | `ViewStyle`                                       | Custom style highlight for section title wrapper  |
+| `throttleDuration`               | `number`                                          | Custom throttle duration, default is 200 ms       |
+| `throttleFunc`                   | `any`                                             | Use your own throttle function                    |                 
+
 ## Contributing
 
 See the [contributing guide](CONTRIBUTING.md) to learn how to contribute to the repository and the development workflow.
