@@ -5,7 +5,7 @@ React Native section scroll indicator
 <p align="center" >
   <kbd>
     <img
-      src="https://github.com/sunrise1002/react-native-section-indicator/docs/assets/scroll.gif?raw=true"
+      src="https://github.com/sunrise1002/react-native-section-indicator/blob/main/docs/assets/scroll.gif?raw=true"
       title="Scroll Demo"
     >
   </kbd>
