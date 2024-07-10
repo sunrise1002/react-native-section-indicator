@@ -248,10 +248,6 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#404040',
-    shadowOffset: { width: 1, height: 1 },
-    elevation: 1,
-    shadowOpacity: 0.5,
     position: 'absolute',
   },
   emptyViewInactiveStyle: {
